@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en" data-theme="__THEME__"><head><meta charset="utf-8"><title>Lumen</title>
+<meta name="color-scheme" content="light dark">
+<style>
+@font-face{font-family:"JetBrains Mono";font-weight:400;src:url(/f/JetBrainsMono-Regular.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:500;src:url(/f/JetBrainsMono-Medium.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:700;src:url(/f/JetBrainsMono-Bold.woff2) format("woff2")}
+:root{--bg:#fff;--side:#f5f6f8;--line:#e4e7ec;--text:#1f2430;--muted:#6b7280;--accent:#2563eb;--accent-bg:#e8f0fe;--hover:#eceef2;--hover2:#dfe3ea;--field:#fff;--toast:#1f2430;--toast-text:#fff;--sw:240px;color-scheme:light}
+:root[data-theme="dark"]{--bg:#14161b;--side:#1b1e25;--line:#2b303b;--text:#e6e8ee;--muted:#98a1b3;--accent:#6ea8fe;--accent-bg:#1f2b45;--hover:#262a33;--hover2:#323744;--field:#12141a;--toast:#e6e8ee;--toast-text:#14161b;color-scheme:dark}
+@media (prefers-color-scheme:dark){:root[data-theme="system"]{--bg:#14161b;--side:#1b1e25;--line:#2b303b;--text:#e6e8ee;--muted:#98a1b3;--accent:#6ea8fe;--accent-bg:#1f2b45;--hover:#262a33;--hover2:#323744;--field:#12141a;--toast:#e6e8ee;--toast-text:#14161b;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:400 12px/1.4 "JetBrains Mono",ui-monospace,Consolas,monospace;overflow:hidden;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;background:none;border:0;border-radius:6px;cursor:pointer;padding:4px 7px}
+button:hover{background:var(--hover)}
+input{font:inherit;color:inherit}
+#side{position:fixed;inset:0 auto 0 0;width:var(--sw);background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:8px;gap:8px}
+body.folded #side{display:none}
+.bar{display:flex;gap:2px;align-items:center}
+.bar .sp{flex:1}
+.bar button{font-size:14px;padding:3px 8px}
+#star.on{color:var(--accent)}
+.aw{position:relative}
+#addr{width:100%;border:1px solid var(--line);background:var(--field);border-radius:8px;padding:7px 9px;outline:none;user-select:text;-webkit-user-select:text}
+#addr.ins{color:#b45309;border-color:#f59e0b}
+#addr:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+#sug{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--field);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:5;display:none;overflow:hidden}
+#sug div{padding:6px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+#sug div small{color:var(--muted);margin-left:6px}
+#sug div.sel,#sug div:hover{background:var(--accent-bg)}
+#pins{display:flex;flex-wrap:wrap;gap:4px}
+#pins .pin{width:34px;height:30px;display:grid;place-items:center;border-radius:7px;cursor:pointer;position:relative}
+#pins .pin:hover{background:var(--hover)}
+#pins .pin.act,.row.act{background:var(--accent-bg)}
+#list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px;min-height:0}
+.row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:7px;cursor:pointer}
+.row:hover{background:var(--hover)}
+.row.act:hover{background:var(--accent-bg)}
+.row .t{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.row.sleep .t{color:var(--muted)}
+.row .b{display:none;padding:0 5px;color:var(--muted)}
+.row:hover .b{display:block}
+.row .b:hover{color:var(--text);background:var(--hover2)}
+.badge{flex:none;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-weight:700;font-size:10px;color:#fff}
+.priv .badge{outline:2px solid #7c3aed;outline-offset:-2px;background:#fff!important;color:#7c3aed}
+.ld{animation:sp 1s linear infinite;border:2px solid #fff;border-top-color:transparent;border-radius:50%;width:12px;height:12px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hd{display:flex;align-items:center;gap:6px;font-weight:700;padding:2px 2px 4px}
+.hd input{flex:1;border:1px solid var(--line);border-radius:6px;padding:4px 7px;background:var(--field);outline:none;font-weight:400;user-select:text;-webkit-user-select:text}
+.empty{color:var(--muted);padding:8px 6px}
+.foot{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;border-top:1px solid var(--line);padding-top:6px}
+.foot button{color:var(--muted);padding:5px 2px}
+.opt{display:flex;gap:8px;align-items:center;padding:5px 6px;cursor:pointer}
+.note{color:var(--muted);font-size:11px;padding:0 6px 6px 30px}
+.sec{font-weight:700;padding:12px 6px 3px}
+select{font:inherit;width:100%;border:1px solid var(--line);border-radius:6px;padding:5px;background:var(--field);color:inherit}
+.wide{display:block;width:100%;text-align:left;padding:6px 8px;border:1px solid var(--line);margin:3px 0;background:var(--field);color:var(--text)}
+.wide.danger{color:#ef4444;border-color:#f87171;background:rgba(239,68,68,.12)}
+#ask{background:var(--accent-bg);border:1px solid var(--accent);border-radius:8px;padding:8px;display:none}
+#ask b{font-weight:700}
+#ask .btns{display:flex;gap:4px;margin-top:6px}
+#ask .btns button{flex:1;border:1px solid var(--line);background:var(--field);padding:4px 2px}
+.srow{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:7px}
+.srow:hover{background:var(--hover)}
+.srow .n{flex:1;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.chip{display:inline-block;border:1px solid var(--line);border-radius:10px;padding:0 6px;margin:0 3px 3px 0;font-size:11px;cursor:pointer}
+.chip.allow{color:#16a34a;border-color:#16a34a}.chip.block{color:#dc2626;border-color:#dc2626}
+.unlock{display:flex;gap:4px;padding:4px 6px}
+.unlock input,.pwin{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:5px 7px;background:var(--field);outline:none}
+#editor{position:fixed;left:var(--sw);right:0;top:0;bottom:0;background:var(--bg);display:none;flex-direction:column;padding:14px;gap:10px;z-index:4}
+body.folded #editor{left:0}
+#editor .top{display:flex;gap:8px;align-items:center}
+#editor .top input{flex:1;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--field);outline:none}
+#editor .top button{border:1px solid var(--line);background:var(--field);padding:6px 12px}
+#editor .top .save{background:var(--accent);border-color:var(--accent);color:#fff}
+#code{flex:1;resize:none;border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--field);color:var(--text);outline:none;font:400 13px/1.55 "JetBrains Mono",ui-monospace,Consolas,monospace;tab-size:2;white-space:pre;overflow:auto;user-select:text;-webkit-user-select:text}
+#editor .tip{color:var(--muted);font-size:11px}
+#hint img{display:block;margin:0 auto 10px;width:64px;height:64px}
+.foot button:hover{color:var(--text)}
+#hint{position:fixed;left:var(--sw);right:0;top:0;bottom:0;display:grid;place-items:center;color:var(--muted)}
+body.folded #hint{left:0}
+#hint table{border-spacing:14px 4px}
+#hint td:first-child{text-align:right;color:var(--text);font-weight:500}
+#hint h1{font:700 22px "JetBrains Mono",monospace;color:var(--text);margin:0 0 8px;text-align:center}
+#toast{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);max-width:min(420px,92vw);background:var(--toast);color:var(--toast-text);padding:7px 14px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+#toast.on{opacity:1}
+</style></head>
+<body>
+<div id="side">
+  <div class="bar">
+    <button id="back" title="Back (Alt+Left)">←</button><button id="fwd" title="Forward (Alt+Right)">→</button>
+    <button id="rel" title="Reload (F5)">↻</button><button id="star" title="Bookmark (Ctrl+D)">☆</button>
+    <span class="sp"></span><button id="fold" title="Fold sidebar (Ctrl+B)">⇤</button>
+  </div>
+  <div class="aw"><input id="addr" placeholder="Search or enter address" spellcheck="false" autocomplete="off"><div id="sug"></div></div>
+  <div id="ask"></div>
+  <div id="pins"></div>
+  <div id="list"></div>
+  <div class="foot">
+    <button id="new" title="New tab (Ctrl+T)">+ Tab</button><button id="priv" title="Private tab (Ctrl+Shift+N)">Private</button>
+    <button id="hist" title="History (Ctrl+Y)">History</button><button id="bms" title="Bookmarks (Ctrl+Shift+B)">Marks</button><button id="scr" title="Scripts">Scripts</button><button id="set" title="Settings (Ctrl+,)">Settings</button>
+  </div>
+</div>
+<div id="hint"><div><img src="/icon.png" alt=""><h1>Lumen</h1><table>
+<tr><td>Ctrl+L</td><td>address</td></tr><tr><td>Ctrl+T / W</td><td>new / close tab</td></tr>
+<tr><td>Ctrl+Shift+T</td><td>reopen tab</td></tr><tr><td>Ctrl+Tab</td><td>next tab</td></tr>
+<tr><td>Ctrl+D</td><td>bookmark</td></tr><tr><td>Ctrl+Shift+R</td><td>reading mode</td></tr>
+<tr><td>Ctrl+Shift+H</td><td>hide an element</td></tr><tr><td>Ctrl+B</td><td>fold sidebar</td></tr><tr><td>Ctrl+,</td><td>settings</td></tr></table></div></div>
+<div id="editor"><div class="top"><input id="ename" placeholder="script name" maxlength="40" spellcheck="false"><button class="save" id="esave" title="Ctrl+S">Save</button><button id="edel">Delete</button><button id="eclose">Close</button></div>
+<textarea id="code" spellcheck="false"></textarea>
+<div class="tip">Runs after the page loads, only on sites named in // @match lines (no all-sites patterns). You approve each site first. Ctrl+S saves.</div></div>
+<div id="toast"></div>
+<script>
+const $=id=>document.getElementById(id);
+const post=o=>window.ipc.postMessage(JSON.stringify(o));
+let S={tabs:[],active:0,bm:[],hist:[],sw:240,panel:'tabs'},panel='tabs',filter='',sel=-1,sugItems=[];
+const hue=s=>{let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h};
+const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return u}};
+const pretty=u=>u.replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\/$/,'');
+const badge=t=>{const h=host(t.url)||'?';const d=document.createElement('span');d.className='badge';d.style.background='hsl('+hue(h)+' 55% 48%)';
+  if(t.loading){const l=document.createElement('span');l.className='ld';d.appendChild(l)}else d.textContent=(h[0]||'?').toUpperCase();return d};
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function render(){
+  if(panel==='settings'&&$('list').contains(document.activeElement))return;
+  document.body.classList.toggle('folded',S.sw===0);
+  if(S.settings&&S.settings.theme)document.documentElement.dataset.theme=S.settings.theme;
+  if(!S.editor)$('editor').style.display='none';
+  const ask=$('ask');
+  if(S.ask){
+    ask.replaceChildren();ask.style.display='block';
+    const m=el('div');m.append(el('b',null,S.ask.name),document.createTextNode(' wants to run on '),el('b',null,S.ask.host));ask.appendChild(m);
+    const bt=el('div','btns');
+    [['Allow once','once'],['Always here','always'],['Block','block']].forEach(([l,c])=>{const b=el('button',null,l);b.onclick=()=>post({cmd:'script-answer',choice:c,name:S.ask.name,host:S.ask.host});bt.appendChild(b)});
+    ask.appendChild(bt);
+  }else ask.style.display='none';
+  document.documentElement.style.setProperty('--sw',S.sw+'px');
+  const act=S.tabs.find(t=>t.id===S.active);
+  $('hint').style.display=(act&&act.url)?'none':'grid';
+  $('star').classList.toggle('on',!!(act&&S.bm.some(b=>b[0]===act.url)));
+  $('star').textContent=(act&&S.bm.some(b=>b[0]===act.url))?'★':'☆';
+  $('addr').classList.toggle('ins',!!(act&&/^http:\/\//i.test(act.url)));
+  $('addr').title=(act&&/^http:\/\//i.test(act.url))?'Not secure: this page is plain HTTP':'';
+  if(document.activeElement!==$('addr'))$('addr').value=act&&act.url?pretty(act.url):'';
+  const pins=$('pins');pins.replaceChildren();
+  const list=$('list');list.replaceChildren();
+  if(panel==='tabs'){
+    for(const t of S.tabs.filter(t=>t.pinned)){
+      const p=el('div','pin'+(t.id===S.active?' act':''));p.title=t.title||t.url;p.appendChild(badge(t));
+      p.onclick=()=>post({cmd:'select',id:t.id});
+      p.onauxclick=e=>{if(e.button===1)post({cmd:'close',id:t.id})};
+      p.oncontextmenu=e=>{e.preventDefault();post({cmd:'pin',id:t.id})};
+      pins.appendChild(p);
+    }
+    for(const t of S.tabs.filter(t=>!t.pinned)){
+      const r=el('div','row'+(t.id===S.active?' act':'')+(t.sleeping?' sleep':'')+(t.private?' priv':''));
+      r.appendChild(badge(t));r.appendChild(el('span','t',t.title||pretty(t.url)||'New tab'));
+      const pb=el('button','b','◦');pb.title='Pin';pb.onclick=e=>{e.stopPropagation();post({cmd:'pin',id:t.id})};
+      const cb=el('button','b','×');cb.title='Close';cb.onclick=e=>{e.stopPropagation();post({cmd:'close',id:t.id})};
+      r.append(pb,cb);r.onclick=()=>post({cmd:'select',id:t.id});
+      r.onauxclick=e=>{if(e.button===1)post({cmd:'close',id:t.id})};
+      list.appendChild(r);
+    }
+  }else if(panel==='settings'){
+    renderSettings(list);
+  }else if(panel==='scripts'){
+    renderScripts(list);
+  }else{
+    const hd=el('div','hd');hd.appendChild(el('span',null,panel==='history'?'History':'Bookmarks'));
+    const f=el('input');f.placeholder='filter';f.value=filter;f.oninput=()=>{filter=f.value;renderPanelItems()};
+    const x=el('button',null,'×');x.onclick=()=>{panel='tabs';render()};hd.append(f,x);list.appendChild(hd);
+    const box=el('div');box.id='items';box.style.cssText='display:flex;flex-direction:column;gap:1px';list.appendChild(box);
+    renderPanelItems();setTimeout(()=>f.focus(),0);
+  }
+}
+function unlockBox(msg){
+  const w=el('div');w.appendChild(el('div','note',msg||'Locked. Enter your password.'));
+  const u=el('div','unlock');const i=el('input');i.type='password';i.placeholder='password';i.autocomplete='off';
+  const go=()=>{if(i.value){post({cmd:'unlock',pw:i.value});i.value=''}};
+  i.onkeydown=e=>{if(e.key==='Enter')go()};
+  const b=el('button',null,'Unlock');b.onclick=go;u.append(i,b);w.appendChild(u);return w;
+}
+function renderScripts(list){
+  const hd=el('div','hd');hd.appendChild(el('span',null,'Scripts'));
+  const x=el('button',null,'×');x.onclick=()=>{panel='tabs';render()};hd.append(x);list.appendChild(hd);
+  if(S.locked){list.appendChild(unlockBox('Scripts are locked.'));return}
+  if(!(S.settings&&S.settings.scripts_enabled)){
+    list.appendChild(el('div','note','Scripts are off. They are small JavaScript files you write yourself; each runs only on the sites you name and asks first.'));
+    const b=el('button','wide','Turn scripts on');b.onclick=()=>post({cmd:'set',key:'scripts',value:true});list.appendChild(b);return;
+  }
+  if(S.scripts===undefined){S.scripts=[];post({cmd:'script-list'})}
+  const nb=el('button','wide','+ New script');nb.onclick=()=>post({cmd:'script-new'});list.appendChild(nb);
+  const sc=S.scripts||[];
+  if(!sc.length)list.appendChild(el('div','empty','No scripts yet'));
+  for(const sx of sc){
+    const r=el('div','srow');const cb=el('input');cb.type='checkbox';cb.checked=sx.enabled;
+    cb.onchange=()=>post({cmd:'script-toggle',name:sx.name,enabled:cb.checked});
+    const n=el('span','n',sx.name);n.title=(sx.matches||[]).join('\n');n.onclick=()=>post({cmd:'script-open',name:sx.name});
+    r.append(cb,n);list.appendChild(r);
+    if(sx.sites&&sx.sites.length){
+      const c=el('div');c.style.cssText='padding:0 6px 4px 30px';
+      sx.sites.forEach(([h,st])=>{const ch=el('span','chip '+st,h+(st==='allow'?' ✓':' ✕'));ch.title='Click to forget this choice';ch.onclick=()=>post({cmd:'script-forget',name:sx.name,host:h});c.appendChild(ch)});
+      list.appendChild(c);
+    }
+  }
+  list.appendChild(el('div','note','Click a name to edit. Click a site chip to forget your choice for it.'));
+}
+window.openEditor=(name,code)=>{
+  $('ename').value=name||'';$('ename').disabled=!!name;
+  $('code').value=code==null?'// @name My script\n// @match https://example.com/*\n\ndocument.title = "[Lumen] " + document.title;\n':code;
+  $('edel').style.display=name?'':'none';
+  S.editor=true;$('editor').style.display='flex';$('code').focus();
+};
+$('esave').onclick=()=>post({cmd:'script-save',name:$('ename').value,code:$('code').value});
+$('edel').onclick=()=>{if(confirm('Delete this script?')){post({cmd:'script-delete',name:$('ename').value});post({cmd:'editor-close'});S.editor=false;$('editor').style.display='none'}};
+$('eclose').onclick=()=>{post({cmd:'editor-close'});S.editor=false;$('editor').style.display='none'};
+$('code').onkeydown=e=>{
+  if(e.key==='Tab'&&!e.ctrlKey){e.preventDefault();const t=e.target,a=t.selectionStart;t.value=t.value.slice(0,a)+'  '+t.value.slice(t.selectionEnd);t.selectionStart=t.selectionEnd=a+2}
+  else if(e.ctrlKey&&!e.shiftKey&&e.key.toLowerCase()==='s'){e.preventDefault();$('esave').onclick()}
+};
+function confirmBtn(label,sure,fn){
+  const b=el('button','wide',label);let armed=false,t;
+  const reset=()=>{armed=false;b.textContent=label;b.classList.remove('danger')};
+  b.onclick=()=>{if(!armed){armed=true;b.textContent=sure;b.classList.add('danger');t=setTimeout(reset,3500)}else{clearTimeout(t);reset();fn()}};
+  return b;
+}
+function renderSettings(list){
+  const st=S.settings||{};
+  const hd=el('div','hd');hd.appendChild(el('span',null,'Settings'));
+  const x=el('button',null,'×');x.onclick=()=>{panel='tabs';render()};hd.append(x);list.appendChild(hd);
+  const opt=(label,note,key,val)=>{
+    const l=el('label','opt');const cb=el('input');cb.type='checkbox';cb.checked=!!val;
+    cb.onchange=()=>post({cmd:'set',key,value:cb.checked});l.append(cb,el('span',null,label));list.appendChild(l);
+    list.appendChild(el('div','note',note));
+  };
+  list.appendChild(el('div','sec','Theme'));
+  const th=el('select');[['Light','light'],['Dark','dark'],['Follow Windows','system']].forEach(([n,v])=>{const o=el('option',null,n);o.value=v;th.appendChild(o)});
+  th.value=st.theme||'light';th.onchange=()=>post({cmd:'set',key:'theme',value:th.value});list.appendChild(th);
+  list.appendChild(el('div','sec','Options'));
+  opt('Block ads and trackers','Off by default. Script-level blocking; reloads this tab when changed.','adblock',st.adblock);
+  opt('Allow risky downloads','Lets .exe, .msi, .bat, .ps1 and similar save without being blocked.','risky',st.allow_risky_downloads);
+  opt('Memory saver mode (restart needed)','Squeezes the web engine harder. Caps the JS heap near 256 MB, which can slow or break heavy sites.','low_memory',st.low_memory);
+  list.appendChild(el('div','sec','Search engine'));
+  const se=el('select');
+  [['Google','https://www.google.com/search?q=%s'],['Bing','https://www.bing.com/search?q=%s'],['Yahoo','https://search.yahoo.com/search?p=%s']].forEach(([n,u])=>{const o=el('option',null,n);o.value=u;se.appendChild(o)});
+  if(![...se.options].some(o=>o.value===st.search)){const o=el('option',null,'Custom (settings.json)');o.value=st.search||'';se.appendChild(o)}
+  se.value=st.search;se.onchange=()=>post({cmd:'set',key:'search',value:se.value});list.appendChild(se);
+  list.appendChild(el('div','sec','Sleep background tabs after'));
+  const sl=el('select');
+  [[5,'5 minutes'],[15,'15 minutes'],[30,'30 minutes'],[60,'1 hour'],[0,'Never']].forEach(([m,n])=>{const o=el('option',null,n);o.value=m;sl.appendChild(o)});
+  sl.value=String(st.sleep_minutes);sl.onchange=()=>post({cmd:'set',key:'sleep',value:Number(sl.value)});list.appendChild(sl);
+  list.appendChild(el('div','sec','Scripts'));
+  opt('Run my own scripts','Off by default. Needs your password to change if one is set.','scripts',st.scripts_enabled);
+  opt('Ask before a script runs on a site','Recommended. Allow once, always on that site, or block.','script_prompt',st.script_prompt);
+  list.appendChild(el('div','sec','Unlock password'));
+  if(S.pw_set){
+    list.appendChild(el('div','note','A password protects scripts and erasing data. It unlocks for 10 minutes.'));
+    if(S.locked)list.appendChild(unlockBox('Unlock to remove the password.'));
+    else{const lk=el('button','wide','Lock now');lk.onclick=()=>post({cmd:'lock'});list.appendChild(lk);
+      list.appendChild(confirmBtn('Remove password','Click again to remove',()=>post({cmd:'clearpw'})))}
+  }else{
+    list.appendChild(el('div','note','Optional. 6+ characters. It cannot be recovered if you forget it (delete lock.json in %LOCALAPPDATA%\\Lumen to reset).'));
+    const u=el('div','unlock');const i=el('input');i.type='password';i.placeholder='new password';i.autocomplete='off';
+    const b=el('button',null,'Set');b.onclick=()=>{if(i.value){post({cmd:'setpw',pw:i.value});i.value=''}};u.append(i,b);list.appendChild(u);
+  }
+  list.appendChild(el('div','sec','Clear data'));
+  if(S.locked)list.appendChild(unlockBox('Locked. Unlock to clear data.'));
+  list.appendChild(confirmBtn('Clear cache, cookies and site data','Click again: this signs you out of sites',()=>post({cmd:'clear',what:'site'})));
+  list.appendChild(confirmBtn('Clear history','Click again to clear history',()=>post({cmd:'clearhist'})));
+  list.appendChild(confirmBtn('Erase everything','Click again: erases ALL browser data',()=>post({cmd:'clear',what:'all'})));
+  list.appendChild(el('div','note','Erase everything also removes history, bookmarks, hidden elements and open tabs. Your settings stay. Private tabs never store anything.'));
+}
+function renderPanelItems(){
+  const box=$('items');if(!box)return;box.replaceChildren();
+  const src=panel==='history'?S.hist:S.bm,q=filter.toLowerCase();
+  const rows=src.filter(i=>!q||(i[0]+' '+i[1]).toLowerCase().includes(q)).slice(0,200);
+  if(!rows.length)box.appendChild(el('div','empty','Nothing here'));
+  for(const [u,t] of rows){
+    const r=el('div','row');r.appendChild(badge({url:u}));r.appendChild(el('span','t',t||pretty(u)));r.title=u;
+    if(panel==='bookmarks'){const d=el('button','b','×');d.onclick=e=>{e.stopPropagation();post({cmd:'delbm',url:u})};r.appendChild(d)}
+    r.onclick=()=>post({cmd:'open',url:u,newtab:false});box.appendChild(r);
+  }
+  if(panel==='history'&&S.hist.length){const c=el('button',null,'Clear history');c.onclick=()=>post({cmd:'clearhist'});box.appendChild(c)}
+}
+function suggest(q){
+  const sug=$('sug');q=q.trim().toLowerCase();sugItems=[];
+  if(q){
+    const seen=new Set();
+    const add=(u,t,tag)=>{if(seen.has(u)||sugItems.length>=6)return;if((u+' '+t).toLowerCase().includes(q)){seen.add(u);sugItems.push([u,t,tag])}};
+    S.tabs.forEach(t=>t.url&&add(t.url,t.title||'','tab'));
+    S.bm.forEach(b=>add(b[0],b[1],'★'));
+    S.hist.forEach(h=>add(h[0],h[1],''));
+  }
+  sel=-1;sug.replaceChildren();
+  sug.style.display=sugItems.length?'block':'none';
+  sugItems.forEach((s,i)=>{const d=el('div',null,s[1]||pretty(s[0]));d.appendChild(el('small',null,pretty(s[0])));
+    d.onmousedown=e=>{e.preventDefault();post({cmd:'open',url:s[0],newtab:false});$('addr').blur()};sug.appendChild(d)});
+}
+const addr=$('addr');
+addr.onfocus=()=>{const act=S.tabs.find(t=>t.id===S.active);if(act&&act.url)addr.value=act.url;addr.select()};
+addr.onblur=()=>{$('sug').style.display='none';render()};
+addr.oninput=()=>suggest(addr.value);
+addr.onkeydown=e=>{
+  const kids=$('sug').children;
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    if(!sugItems.length)return;e.preventDefault();
+    const n=sugItems.length+1;
+    sel=((sel+1+(e.key==='ArrowDown'?1:-1)+n)%n)-1;
+    [...kids].forEach((k,i)=>k.classList.toggle('sel',i===sel));
+  }else if(e.key==='Enter'){
+    e.preventDefault();
+    if(sel>=0)post({cmd:'open',url:sugItems[sel][0],newtab:false});else post({cmd:'go',text:addr.value});
+    addr.blur();
+  }else if(e.key==='Escape'){addr.blur()}
+};
+$('back').onclick=()=>post({cmd:'back'});$('fwd').onclick=()=>post({cmd:'fwd'});
+$('rel').onclick=()=>post({cmd:'reload'});$('star').onclick=()=>post({cmd:'bookmark'});
+$('fold').onclick=()=>post({cmd:'fold'});$('new').onclick=()=>post({cmd:'new'});
+$('priv').onclick=()=>post({cmd:'private'});
+$('hist').onclick=()=>{panel=panel==='history'?'tabs':'history';filter='';render()};
+$('scr').onclick=()=>{panel=panel==='scripts'?'tabs':'scripts';filter='';render();if(panel==='scripts')post({cmd:'script-list'})};
+$('set').onclick=()=>{panel=panel==='settings'?'tabs':'settings';render()};
+$('bms').onclick=()=>{panel=panel==='bookmarks'?'tabs':'bookmarks';filter='';render()};
+window.__s=s=>{Object.assign(S,s);render()};
+window.focusAddr=()=>{addr.focus();addr.select()};
+window.showPanel=p=>{panel=panel===p?'tabs':p;filter='';render();if(p==='scripts'&&panel==='scripts')post({cmd:'script-list'})};
+let tt;window.toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2200)};
+post({cmd:'ready'});
+</script></body></html>

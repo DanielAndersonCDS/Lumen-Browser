@@ -1,0 +1,24 @@
+[package]
+name = "lumen"
+version = "0.1.0"
+edition = "2021"
+description = "A very light, bright, single-window browser for Windows 11 (WebView2)"
+
+[dependencies]
+tao = "0.37"
+wry = "0.57"
+serde_json = "1"
+dirs = "6"
+sha2 = "0.10"
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+overflow-checks = true
+strip = true
