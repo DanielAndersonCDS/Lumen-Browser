@@ -12,7 +12,7 @@ cargo run            # debug build, F12 opens devtools
 cargo build --release
 ```
 
-The binary is `target\release\lumen.exe`. WebView2 Runtime ships with Windows 11, nothing else to install.
+The binary is `target\release\lumen.exe`. Lumen opens no console window in any build (double-click the exe to launch it with nothing else on screen; `cargo run` still keeps the terminal you ran it from). If it ever closes unexpectedly, the reason is in `%LOCALAPPDATA%\Lumen\crash.log`. WebView2 Runtime ships with Windows 11, nothing else to install.
 
 ## Keys
 
@@ -47,6 +47,10 @@ Right-click a pinned tab to unpin it. Middle-click closes a tab.
 ## Files (in %LOCALAPPDATA%\Lumen)
 
 `settings.json` (all of these are also in the Settings panel; search URL with `%s`, default Google; Bing is `https://www.bing.com/search?q=%s`, Yahoo is `https://search.yahoo.com/search?p=%s`. Also `sleep_minutes` (0 = never), `adblock` (off by default), `allow_risky_downloads`), `session.json`, `history.json`, `bookmarks.json`, `hidden.json`, and `WebView2\` (cookies and site data). Private tabs write nothing.
+
+## Colors (Settings > Colors)
+
+For people who don't want to touch files: pick a preset (Paper, Ocean, Forest, Rose, Graphite, Neon) or set four colors yourself with the color pickers: accent, background, sidebar, text. Everything else (borders, hover, muted text) is worked out from those. Changes show live. Lumen refuses color combinations that are hard to read (so you can't lock yourself out of the UI), and **Reset colors** goes back to the default. Websites keep their own colors; use Theme for the light/dark preference sites see. The choice is saved in `settings.json` under `colors` (delete that line to reset by hand).
 
 ## Dark mode
 

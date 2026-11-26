@@ -1,7 +1,7 @@
 //! Lumen: a very light, bright, single-window browser. WebView2 on Windows 11.
 //! Design rules: one idle event loop (zero CPU), lazy tab webviews, sleeping
 //! background tabs, no favicons, no extensions, no background services.
-#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+#![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod scripts;
 mod store;
@@ -69,6 +69,41 @@ const TAB_KEYS: &[&str] = &[
 static LOW_MEM: AtomicBool = AtomicBool::new(false);
 // 0 = light, 1 = dark, 2 = follow system
 static THEME: AtomicU8 = AtomicU8::new(0);
+// Custom UI colors as JSON ("null" when none), so the UI page can paint them from its first frame.
+static COLORS: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+const COLOR_KEYS: [&str; 4] = ["accent", "bg", "side", "text"];
+
+fn lum(h: &str) -> Option<f64> {
+    let h = h.strip_prefix('#')?;
+    if h.len() != 6 {
+        return None;
+    }
+    let c = |i: usize| -> Option<f64> {
+        let v = u8::from_str_radix(h.get(i..i + 2)?, 16).ok()? as f64 / 255.0;
+        Some(if v <= 0.03928 { v / 12.92 } else { ((v + 0.055) / 1.055).powf(2.4) })
+    };
+    Some(0.2126 * c(0)? + 0.7152 * c(2)? + 0.0722 * c(4)?)
+}
+
+fn contrast(a: &str, b: &str) -> Option<f64> {
+    let (x, y) = (lum(a)?, lum(b)?);
+    Some((x.max(y) + 0.05) / (x.min(y) + 0.05))
+}
+
+/// Accepts a full set of four #rrggbb colors that stay readable. Returns None otherwise.
+fn valid_colors(v: &Value) -> Option<Value> {
+    let o = v.as_object()?;
+    let mut out = serde_json::Map::new();
+    for k in COLOR_KEYS {
+        let c = o.get(k)?.as_str()?.to_ascii_lowercase();
+        lum(&c)?;
+        out.insert(k.to_string(), json!(c));
+    }
+    let g = |k: &str| out[k].as_str().unwrap_or("#000000").to_string();
+    let (a, b, sd, t) = (g("accent"), g("bg"), g("side"), g("text"));
+    (contrast(&t, &b)? >= 4.0 && contrast(&t, &sd)? >= 3.5 && contrast(&a, &b)? >= 2.5).then(|| Value::Object(out))
+}
 
 #[cfg(windows)]
 fn wv2_args() -> String {
@@ -158,6 +193,7 @@ struct App {
     lockout_until: Option<Instant>,
     pending: Vec<(u64, String, String)>,
     editor: bool,
+    colors: Value,
 }
 
 fn builder<'a>(ctx: &'a mut WebContext) -> WebViewBuilder<'a> {
@@ -256,7 +292,7 @@ fn nav_allowed(u: &str) -> bool {
 }
 
 fn safe_selector(s: &str) -> bool {
-    !s.is_empty() && s.len() <= 200 && !s.contains(['{', '}', ';', '<', '>', '\\', '@', '\n'])
+    !s.is_empty() && s.len() <= 200 && !s.contains(['{', '}', ';', '<', '\\', '@', '\n'])
 }
 
 fn unique_path(dir: &Path, name: &std::ffi::OsStr) -> PathBuf {
@@ -770,7 +806,7 @@ impl App {
     }
 
     fn settings_json(&self) -> Value {
-        json!({"search": self.search, "sleep_minutes": self.sleep_min, "adblock": self.adblock.is_some(), "allow_risky_downloads": self.allow_risky, "theme": theme_name(), "low_memory": LOW_MEM.load(Ordering::Relaxed), "scripts_enabled": self.scripts_on, "script_prompt": self.script_prompt})
+        json!({"search": self.search, "sleep_minutes": self.sleep_min, "adblock": self.adblock.is_some(), "allow_risky_downloads": self.allow_risky, "theme": theme_name(), "low_memory": LOW_MEM.load(Ordering::Relaxed), "scripts_enabled": self.scripts_on, "script_prompt": self.script_prompt, "colors": self.colors})
     }
 
     fn save_settings(&self) {
@@ -809,6 +845,23 @@ impl App {
                     }
                 }
             }
+            "colors" => match val {
+                None | Some(Value::Null) => {
+                    self.colors = Value::Null;
+                    *COLORS.lock().unwrap() = "null".into();
+                }
+                Some(v) => match valid_colors(v) {
+                    Some(c) => {
+                        *COLORS.lock().unwrap() = c.to_string();
+                        self.colors = c;
+                    }
+                    None => {
+                        self.eval_ui("toast('Those colors are too hard to read together')");
+                        self.push();
+                        return;
+                    }
+                },
+            },
             "theme" => {
                 if let Some(t) = val.and_then(|x| x.as_str()) {
                     self.apply_theme(t);
@@ -1232,7 +1285,13 @@ impl App {
 }
 
 fn main() {
+    // No console window in any build, so write panics to a file instead.
+    std::panic::set_hook(Box::new(|info| {
+        let _ = std::fs::write(store::dir().join("crash.log"), info.to_string());
+    }));
     let settings = store::load("settings.json");
+    let colors = settings.get("colors").and_then(valid_colors).unwrap_or(Value::Null);
+    *COLORS.lock().unwrap() = colors.to_string();
     let search = settings.get("search").and_then(|v| v.as_str()).unwrap_or("https://www.google.com/search?q=%s").to_string();
     let sleep_min = settings.get("sleep_minutes").and_then(|v| v.as_u64()).unwrap_or(15).min(1440);
     let adblock_on = settings.get("adblock").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -1258,7 +1317,7 @@ fn main() {
     let ui = builder(&mut ctx)
         .with_custom_protocol("lumen".into(), |_id, req| {
             let (body, mime): (Cow<'static, [u8]>, &str) = match req.uri().path() {
-                "/ui.html" => (Cow::Owned(UI_HTML.replace("__THEME__", theme_name()).into_bytes()), "text/html; charset=utf-8"),
+                "/ui.html" => (Cow::Owned(UI_HTML.replace("__THEME__", theme_name()).replace("__COLORS__", &COLORS.lock().map(|c| if c.is_empty() { "null".to_string() } else { c.clone() }).unwrap_or_else(|_| "null".into())).into_bytes()), "text/html; charset=utf-8"),
                 "/f/JetBrainsMono-Regular.woff2" => (Cow::Borrowed(F_REG), "font/woff2"),
                 "/f/JetBrainsMono-Medium.woff2" => (Cow::Borrowed(F_MED), "font/woff2"),
                 "/f/JetBrainsMono-Bold.woff2" => (Cow::Borrowed(F_BOLD), "font/woff2"),
@@ -1331,6 +1390,7 @@ fn main() {
         lockout_until: None,
         pending: Vec::new(),
         editor: false,
+        colors,
     };
 
     if settings.is_null() {
@@ -1390,4 +1450,44 @@ fn main() {
             _ => {}
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn set(a: &str, b: &str, sd: &str, t: &str) -> Value {
+        json!({"accent": a, "bg": b, "side": sd, "text": t})
+    }
+
+    #[test]
+    fn presets_are_readable() {
+        let presets = [
+            set("#b45309", "#fbf6ec", "#f1e9d8", "#3b3226"),
+            set("#0284c7", "#f4f9fc", "#e6f1f7", "#12303f"),
+            set("#15803d", "#f6faf5", "#e8f1e6", "#1c2b1f"),
+            set("#e11d48", "#fff7f8", "#fdeaed", "#3a1f26"),
+            set("#f59e0b", "#1a1a1a", "#242424", "#eaeaea"),
+            set("#8b7cff", "#0b1020", "#121935", "#e8ecff"),
+        ];
+        for p in presets {
+            assert!(valid_colors(&p).is_some(), "{p}");
+        }
+    }
+
+    #[test]
+    fn unreadable_or_malformed_colors_are_refused() {
+        assert!(valid_colors(&set("#2563eb", "#ffffff", "#ffffff", "#ffffff")).is_none());
+        assert!(valid_colors(&set("#ffffff", "#ffffff", "#f5f6f8", "#1f2430")).is_none());
+        assert!(valid_colors(&set("red", "#ffffff", "#f5f6f8", "#1f2430")).is_none());
+        assert!(valid_colors(&json!({"accent": "#2563eb"})).is_none());
+        assert!(valid_colors(&set("#2563eb", "#ffffff", "#f5f6f8", "#1f2430")).is_some());
+    }
+
+    #[test]
+    fn url_schemes() {
+        assert!(safe_url("https://a.com") && safe_url("http://a.com"));
+        assert!(!safe_url("file:///c:/x") && !safe_url("javascript:alert(1)") && !safe_url("data:text/html,x"));
+        assert!(!safe_selector("a{color:red}") && safe_selector("div.ad>p:nth-of-type(2)"));
+    }
 }
